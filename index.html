@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>المدينة المفقودة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Almarai:wght@300;400;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#c9a227; --gold-soft:#a5862c; --ivory:#efe6d0; --ink:#171310;
+  --panel:#221b12; --panel2:#2b2216; --line:#4a3c22; --teal:#3ec6b4;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:#0d0b08}
+body{font-family:'Almarai',sans-serif;color:var(--ivory)}
+canvas#game{display:block;width:100vw;height:100vh;touch-action:none;cursor:crosshair}
+
+/* ====== HUD ====== */
+#hud{position:fixed;top:0;right:0;left:0;display:flex;justify-content:space-between;align-items:flex-start;padding:12px 14px;pointer-events:none;z-index:20;gap:10px}
+.hud-box{display:flex;align-items:center;gap:14px;background:rgba(20,16,10,.82);border:1px solid var(--line);border-bottom:2px solid var(--line);padding:8px 14px;pointer-events:auto}
+.hud-box .sep{width:1px;height:22px;background:var(--line)}
+.stat{display:flex;align-items:center;gap:6px;font-weight:800;font-size:15px;letter-spacing:.3px}
+.stat svg{width:19px;height:19px;flex:none}
+.stat.dim{opacity:.28;transition:opacity .3s}
+.stat.lit{opacity:1}
+#hudRings{display:flex;gap:5px;align-items:center}
+.ring-dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--gold-soft);background:transparent;transition:all .3s}
+.ring-dot.on[data-ring="sun"]{background:var(--gold);box-shadow:0 0 6px rgba(201,162,39,.6)}
+.ring-dot.on[data-ring="moon"]{background:#b9cfe8;box-shadow:0 0 6px rgba(185,207,232,.6)}
+.ring-dot.on[data-ring="star"]{background:#fff3d6;box-shadow:0 0 6px rgba(255,243,214,.6)}
+.hud-left{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.clock-box{display:flex;align-items:center;gap:8px;background:rgba(20,16,10,.82);border:1px solid var(--line);padding:7px 12px;pointer-events:auto;font-size:13px;font-weight:700}
+.clock-box svg{width:20px;height:20px}
+.hud-btns{display:flex;gap:6px}
+.hbtn{width:36px;height:36px;display:grid;place-items:center;background:rgba(20,16,10,.82);border:1px solid var(--line);color:var(--ivory);cursor:pointer;transition:.2s}
+.hbtn:hover{border-color:var(--gold);color:var(--gold)}
+.hbtn svg{width:18px;height:18px}
+
+/* ====== تلميح التفاعل ====== */
+#prompt{position:fixed;bottom:76px;left:50%;transform:translateX(-50%);background:rgba(20,16,10,.88);border:1px solid var(--gold-soft);color:var(--ivory);padding:8px 18px;font-size:14px;font-weight:700;display:none;z-index:20;white-space:nowrap}
+#prompt .kbd{display:inline-block;background:var(--gold);color:#1a1508;border-radius:3px;padding:1px 8px;margin-left:8px;font-weight:800}
+
+/* ====== توست ====== */
+#toasts{position:fixed;top:74px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:40;pointer-events:none;align-items:center}
+.toast{background:rgba(24,19,11,.94);border:1px solid var(--gold-soft);border-right:3px solid var(--gold);padding:9px 20px;font-size:14px;font-weight:700;max-width:86vw;text-align:center;animation:tIn .3s ease,tOut .4s ease 2.9s forwards}
+@keyframes tIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+@keyframes tOut{to{opacity:0;transform:translateY(-8px)}}
+
+/* ====== الطبقات / اللوحات ====== */
+.ov{position:fixed;inset:0;background:rgba(8,6,3,.66);display:grid;place-items:center;z-index:50;padding:16px;overflow:auto}
+.ov.hidden{display:none}
+.panel{background:var(--panel);border:1px solid var(--line);outline:1px solid rgba(201,162,39,.14);outline-offset:4px;padding:26px 30px;max-width:620px;width:100%;position:relative;animation:pIn .25s ease}
+@keyframes pIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+.panel.shake{animation:shk .3s}
+@keyframes shk{0%,100%{transform:none}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+.panel h2{font-family:'Aref Ruqaa',serif;color:var(--gold);font-size:26px;margin-bottom:12px;line-height:1.5}
+.panel h3{font-family:'Aref Ruqaa',serif;color:var(--ivory);font-size:18px;margin:14px 0 6px}
+.panel p{line-height:1.9;font-size:14.5px;color:#d8cdb4}
+.panel .quote{border-right:3px solid var(--gold);padding:6px 14px;margin:10px 0;background:var(--panel2);font-family:'Aref Ruqaa',serif;font-size:16px;line-height:2;color:var(--ivory)}
+.pclose{position:absolute;top:10px;left:10px;width:30px;height:30px;display:grid;place-items:center;background:none;border:1px solid var(--line);color:#bfae8a;cursor:pointer;font-size:15px}
+.pclose:hover{border-color:var(--gold);color:var(--gold)}
+.btn{display:inline-block;background:none;border:1px solid var(--gold);color:var(--gold);font-family:'Almarai';font-weight:800;font-size:15px;padding:9px 26px;cursor:pointer;transition:.2s;letter-spacing:.5px}
+.btn:hover{background:var(--gold);color:#1a1508}
+.btn.solid{background:var(--gold);color:#1a1508}
+.btn.solid:hover{background:#dfb93f}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn:disabled:hover{background:none;color:var(--gold)}
+.btn-row{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+
+/* مقدمة */
+#introPanel{text-align:center;max-width:560px}
+.kicker{color:var(--gold-soft);font-size:13px;letter-spacing:4px;font-weight:700;margin-bottom:6px}
+#introPanel h1{font-family:'Aref Ruqaa',serif;font-size:56px;color:var(--ivory);line-height:1.35;margin:4px 0 14px;text-shadow:0 3px 0 rgba(0,0,0,.4)}
+#introPanel .story{font-size:15px;color:#cdbf9f;margin-bottom:18px}
+.ctrl-hint{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin:14px 0 20px;font-size:12.5px;color:#a9997a}
+.ctrl-hint .kbd{background:var(--panel2);border:1px solid var(--line);border-radius:3px;padding:2px 8px;color:var(--ivory);font-weight:800;margin-left:5px}
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--gold-soft),transparent);margin:16px 0;opacity:.5}
+
+/* متجر / حقيبة */
+.shop-row{display:flex;align-items:center;gap:14px;padding:12px 4px;border-bottom:1px dashed var(--line)}
+.shop-row:last-child{border-bottom:none}
+.shop-ic{width:40px;height:40px;flex:none;display:grid;place-items:center;border:1px solid var(--line);background:var(--panel2)}
+.shop-ic svg{width:22px;height:22px;color:var(--gold)}
+.shop-info{flex:1}
+.shop-info b{font-size:15px}
+.shop-info small{display:block;color:#a9997a;font-size:12px;margin-top:2px}
+.price{font-weight:800;color:var(--teal);white-space:nowrap;font-size:14px;display:flex;align-items:center;gap:4px}
+.price svg{width:14px;height:14px}
+.bag-sec{margin-bottom:14px}
+.bag-list{display:flex;flex-wrap:wrap;gap:8px}
+.bag-tag{border:1px solid var(--line);background:var(--panel2);padding:5px 12px;font-size:13px}
+.bag-tag em{color:var(--gold-soft);font-style:normal;font-size:11px;display:block}
+
+/* ألغاز */
+.puzzle-desc{margin-bottom:14px}
+.rune-row{display:flex;justify-content:center;gap:12px;margin:16px 0}
+.rune-btn{width:64px;height:64px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;display:grid;place-items:center;transition:.15s}
+.rune-btn:hover{border-color:var(--gold)}
+.rune-btn:active{transform:scale(.94)}
+.rune-btn svg{width:36px;height:36px;color:var(--ivory)}
+.rune-btn.hit{border-color:var(--gold);background:#3a2f14}
+.slot-row{display:flex;justify-content:center;gap:10px;margin-top:6px}
+.slot{width:52px;height:52px;border:1px dashed var(--line);display:grid;place-items:center;background:#181209}
+.slot svg{width:28px;height:28px;color:var(--gold)}
+.dials-wrap{direction:ltr;display:flex;justify-content:center;gap:26px;margin:18px 0;flex-wrap:wrap}
+.dial{display:flex;flex-direction:column;align-items:center;gap:8px}
+.dial .disc-wrap{position:relative;width:110px;height:110px}
+.dial svg.disc{width:110px;height:110px;transition:transform .28s cubic-bezier(.3,1.4,.5,1)}
+.dial .pointer{position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid var(--gold)}
+.dial-arrows{display:flex;gap:8px}
+.dial-arrows button{width:34px;height:30px;background:var(--panel2);border:1px solid var(--line);color:var(--ivory);cursor:pointer;font-size:15px}
+.dial-arrows button:hover{border-color:var(--gold)}
+.star-row{display:flex;justify-content:center;gap:10px;margin:18px 0}
+.star-btn{background:none;border:none;cursor:pointer;padding:4px}
+.star-btn svg{width:52px;height:52px;transition:.2s}
+.star-btn:hover{transform:scale(1.1)}
+
+/* النهاية */
+#endingPanel{text-align:center;max-width:640px}
+#endingPanel h1{font-family:'Aref Ruqaa',serif;font-size:38px;color:var(--gold);margin-bottom:4px}
+.rank-badge{display:inline-block;margin:12px 0;padding:8px 30px;border:1px solid var(--gold);color:var(--gold);font-family:'Aref Ruqaa',serif;font-size:22px}
+.end-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;text-align:right;margin:16px 0;font-size:14px}
+.end-grid .row{display:flex;justify-content:space-between;border-bottom:1px dashed var(--line);padding:6px 2px}
+.end-grid .row b{color:var(--gold)}
+.treasure-list{text-align:right;display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.treasure-list .t{border-right:2px solid var(--gold);padding:4px 12px;background:var(--panel2);font-size:13.5px}
+.treasure-list .t em{color:#a9997a;font-style:normal;font-size:12px;margin-right:8px}
+
+/* لمس */
+#actBtn{position:fixed;bottom:26px;left:26px;width:66px;height:66px;border-radius:50%;background:rgba(201,162,39,.9);border:3px solid #efe6d0;display:none;place-items:center;z-index:30;cursor:pointer}
+#actBtn svg{width:30px;height:30px;color:#1a1508}
+#joyBase{position:fixed;width:110px;height:110px;border-radius:50%;border:2px solid rgba(239,230,208,.35);background:rgba(20,16,10,.35);display:none;z-index:30;pointer-events:none}
+#joyKnob{position:absolute;width:46px;height:46px;border-radius:50%;background:rgba(239,230,208,.5);left:32px;top:32px}
+@media (max-width:640px){
+  #introPanel h1{font-size:40px}
+  .hud-box{gap:8px;padding:7px 10px}
+  .panel{padding:20px 16px}
+  .end-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="hud-box">
+    <div class="stat" id="stGems"></div>
+    <div class="sep"></div>
+    <div class="stat" id="stKeys"></div>
+    <div class="sep"></div>
+    <div class="stat"><div id="hudRings">
+      <span class="ring-dot" data-ring="sun"></span>
+      <span class="ring-dot" data-ring="moon"></span>
+      <span class="ring-dot" data-ring="star"></span>
+    </div></div>
+    <div class="sep"></div>
+    <div class="stat dim" id="toolTorch"></div>
+    <div class="stat dim" id="toolShovel"></div>
+    <div class="stat dim" id="toolLens"></div>
+  </div>
+  <div class="hud-left">
+    <div class="clock-box"><span id="clockIcon"></span><span id="clockLabel">نهار</span><span style="opacity:.5">|</span><span>اليوم <span id="hudDay">١</span></span></div>
+    <div class="hud-btns">
+      <button class="hbtn" id="btnBag" title="المقتنيات"></button>
+      <button class="hbtn" id="btnSound" title="الصوت"></button>
+      <button class="hbtn" id="btnHelp" title="المساعدة"></button>
+    </div>
+  </div>
+</div>
+
+<div id="prompt"><span id="promptText"></span><span class="kbd">E</span></div>
+<div id="toasts"></div>
+<div id="actBtn"></div>
+<div id="joyBase"><div id="joyKnob"></div></div>
+
+<div class="ov" id="ov"><div class="panel" id="ovPanel"></div></div>
+
+<script>
+'use strict';
+/* ================= أدوات عامة ================= */
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const AR='٠١٢٣٤٥٦٧٨٩';
+const arNum=n=>String(n).replace(/\d/g,d=>AR[+d]);
+function h2(x,y){let n=(x*374761393+y*668265263)|0;n=Math.imul(n^(n>>>13),1274126177);return((n^(n>>>16))>>>0)/4294967296;}
+
+/* ================= الصوت (إجرائي) ================= */
+let AC=null,muted=false,windGain=null;
+function ac(){if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();startWind();}if(AC.state==='suspended')AC.resume();return AC;}
+function tone(f,dur,type='sine',vol=.14,delay=0,slide=0){if(muted||!AC)return;const t0=AC.currentTime+delay;const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t0);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t0+dur);g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(vol,t0+.012);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);o.connect(g).connect(AC.destination);o.start(t0);o.stop(t0+dur+.05);}
+function noiseBurst(dur=.15,vol=.2,freq=800,delay=0){if(muted||!AC)return;const t0=AC.currentTime+delay;const n=AC.sampleRate*dur|0;const buf=AC.createBuffer(1,n,AC.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource();s.buffer=buf;const f=AC.createBiquadFilter();f.type='bandpass';f.frequency.value=freq;const g=AC.createGain();g.gain.value=vol;s.connect(f).connect(g).connect(AC.destination);s.start(t0);}
+const sGem=()=>{tone(880,.09,'triangle',.11);tone(1318,.15,'triangle',.09,.06);};
+const sBig=()=>{[659,830,988,1318].forEach((f,i)=>tone(f,.18,'triangle',.12,i*.08));};
+const sBreak=()=>{noiseBurst(.18,.28,900);tone(140,.1,'square',.05);};
+const sDoor=()=>{tone(72,.8,'sawtooth',.09,0,-30);noiseBurst(.55,.1,260);};
+const sErr=()=>{tone(165,.18,'square',.07);tone(118,.26,'square',.07,.12);};
+const sSolve=()=>{[523,659,784,1046].forEach((f,i)=>tone(f,.24,'triangle',.12,i*.1));};
+const sBuy=()=>{tone(660,.1,'triangle',.1);tone(990,.15,'triangle',.1,.08);};
+const sKey=()=>{[784,988,1244].forEach((f,i)=>tone(f,.16,'sine',.12,i*.07));};
+function startWind(){const n=AC.sampleRate*2|0;const buf=AC.createBuffer(1,n,AC.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;const s=AC.createBufferSource();s.buffer=buf;s.loop=true;const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=300;windGain=AC.createGain();windGain.gain.value=.012;s.connect(f).connect(windGain).connect(AC.destination);s.start();}
+
+/* ================= الخريطة ================= */
+const TILE=36,W=60,H=44,LIFT=14;
+const WALL=1,FLOOR=0,DIRT=2,WATER=3,TREE=4,PILLAR=5;
+const grid=Array.from({length:H},()=>Array(W).fill(WALL));
+function carve(x,y,w,h,t=FLOOR){for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++)if(i>0&&j>0&&i<W-1&&j<H-1)grid[j][i]=t;}
+
+carve(4,16,11,12);        // الساحة
+carve(6,25,3,2,WATER);    // البركة
+carve(4,21,52,4);         // الشارع الكبير
+carve(5,5,12,10);         // حي الأختام
+carve(10,15,1,6);         // ممر حي الأختام
+carve(42,5,10,10);        // برج النجوم
+carve(46,15,1,6);
+carve(24,10,10,6);        // قدس النجوم
+carve(28,16,1,5);
+carve(42,28,10,10);       // بئر الظلال
+carve(46,25,1,3);
+carve(5,29,14,10,DIRT);   // حديقة الزحف
+carve(11,25,1,4);         // مدخل الحديقة
+carve(52,10,6,7);         // قدس قلب المدينة
+carve(55,17,1,4);
+[[5,16],[13,16],[13,27],[5,29],[18,29],[5,38],[18,38],[16,5],[5,5],[42,5],[51,5],[24,10],[33,10],[42,37]].forEach(([x,y])=>grid[y][x]=TREE);
+[[7,9],[14,9],[48,8],[25,13],[32,13],[56,12],[44,31],[49,34]].forEach(([x,y])=>grid[y][x]=PILLAR);
+const pillarTorches=new Set(['44,31','49,34']);
+const WALL_TORCHES=[[8,15],[13,15],[45,15],[48,15],[26,9],[31,9],[44,27],[49,27],[53,9],[56,9]];
+const DARK={x:42,y:28,w:10,h:10}; // بئر الظلال: ظلامٌ دامس دائمًا
+
+/* ================= البيانات ================= */
+const SIGNS=[
+ {x:6,y:20,title:'نقش الساحة',text:'«مسافرُ، أهلًا بك في أعناق السنين. هذه المدينةُ المفقودة لا تُسلِّم أسرارَها إلا لمن خَبَط في جِرارها وصناديقها، وحلَّ ألغازَ أبوابها. وتذكَّر: الليلُ يكشفُ ما يخفيه النهار.»'},
+ {x:11,y:19,title:'لوحة الأختام',text:'«بالشمسِ بدأتِ المدينة، وبالقمرِ سهرت، وبالنجمِ اكتملت، وبالعينِ رُعيت.» — أربعةُ ختومٍ على بابِ الأختام؛ اضغطْها بهذا الترتيب.'},
+ {x:47,y:21,title:'لوحة الأقراص',text:'«ثلاثةُ أقراصٍ تحفظُ تأريخَ المدينة. المخطوطةُ المفقودةُ في حيِّ الأختام تدلُّ على الوضعِ الصحيح.»'},
+ {x:27,y:21,title:'لوحة النجوم',text:'«بوابةُ النجومِ تنامُ في النهارِ وتصحو في الظلام. أنِرْ نجومَها الخمس؛ فلمسةُ كلِّ نجمةٍ تقلبُها وتقلبُ جاراتَها.»'},
+ {x:44,y:24,title:'لوحة البئر',text:'«بئرُ الظلال: ما في جوفِه لا يُرى إلا بنار. وبابُه النحاسيُّ يفتحُ بمفتاحٍ نحاسيّ.»'},
+ {x:54,y:22,title:'لوحة المعبد',text:'«قلبُ المدينةِ لا ينامُ تحت بوابةِ الشرق. ثلاثةُ خواتمَ تفتحُ الطريق: خاتمُ الشمسِ من بابِ الأختام، وخاتمُ القمرِ من بوابةِ الأقراص، وخاتمُ النجمِ من بوابةِ النجوم.»'},
+];
+const JARS=[
+ {x:13,y:18,loot:{gems:3}},{x:7,y:18,loot:{}},
+ {x:6,y:12,loot:{key:1}},{x:15,y:6,loot:{gems:4}},
+ {x:25,y:11,loot:{gems:3}},{x:32,y:14,loot:{}},
+ {x:50,y:6,loot:{gems:5}},{x:43,y:13,loot:{gems:4}},
+ {x:32,y:22,loot:{gems:2}},{x:34,y:23,loot:{treasure:'ringk'}},
+ {x:38,y:22,loot:{gems:3}},{x:16,y:31,loot:{gems:4}},
+ {x:44,y:30,loot:{gems:5}},{x:49,y:35,loot:{gems:12}},
+];
+const CHESTS=[
+ {x:8,y:7,loot:{gems:8,treasure:'scroll'}},
+ {x:49,y:12,loot:{gems:10,treasure:'neck'}},
+ {x:41,y:21,loot:{gems:6,treasure:'statue'}},
+ {x:51,y:36,loot:{gems:12,treasure:'cup'}},
+];
+const KEYITEMS=[{x:44,y:9}];
+const GEMS=[[5,17,3],[13,25,4],[14,5,5],[43,6,6],[25,12,4],[32,11,4],[7,30,3],[17,37,4],[31,22,3],[43,29,6],[50,29,6],[51,32,8],[53,11,6],[56,15,6],[20,23,2],[45,22,3],[47,30,5]];
+const NGEMS=[[29,12,20],[18,22,4],[36,24,4],[50,21,4]];
+const SHRUBS=[[6,27,1],[15,30,1],[8,38,0],[26,21,1],[36,21,0]];
+const DIGS=[[8,35,'crown',10],[14,36,null,15],[6,31,null,8],[12,33,null,5]];
+const DOORS=[
+ {id:1,x:10,y:17,kind:'runes',name:'باب الأختام',ring:'sun'},
+ {id:2,x:46,y:17,kind:'dials',name:'بوابة الأقراص',ring:'moon'},
+ {id:3,x:46,y:26,kind:'key',name:'باب النحاس'},
+ {id:4,x:28,y:18,kind:'stars',name:'بوابة النجوم',ring:'star'},
+ {id:5,x:55,y:19,kind:'final',name:'بوابة المعبد'},
+];
+const doorMap=new Map(DOORS.map(d=>[d.x+','+d.y,d]));
+const TREASURES={
+ scroll:{name:'مخطوطة الأقراص',desc:'تأريخُ المدينةِ المحفور'},
+ ringk:{name:'خاتم الكاهنة',desc:'ذهبٌ بإصبعِ نذر'},
+ statue:{name:'تمثال الموسيقي',desc:'برونزٌ يهمسُ بنغمٍ قديم'},
+ neck:{name:'عقد الفيروز',desc:'أحجارٌ بلونِ السماء'},
+ cup:{name:'كأس الظلال',desc:'شربَ منه حرّاسُ البئر'},
+ crown:{name:'تاج الملك الأخير',desc:'بقيَ مدفونًا تحت الرمال'},
+ heart:{name:'قلب المدينة',desc:'ياقوتةٌ لا تنام'},
+};
+const RING_NAMES={sun:'خاتم الشمس',moon:'خاتم القمر',star:'خاتم النجم'};
+const SHOP=[
+ {id:'torch',name:'مشعل النار',desc:'ينيرُ الظلامَ الدامس — لن ترى البئرَ دونه',price:12},
+ {id:'shovel',name:'مجرفة أثرية',desc:'لنخرجَ ما دفنته الرمالُ في حديقة الزحف',price:18},
+ {id:'lens',name:'عدسة القمر',desc:'تُظهر وميضَ كلِّ ما هو مخبأٌ قريبًا منك',price:25},
+];
+
+/* ================= الكيانات ================= */
+const ents=[];
+function addE(o){o.px=(o.x+.5)*TILE;o.py=(o.y+.5)*TILE;ents.push(o);return o;}
+JARS.forEach(j=>addE({type:'jar',x:j.x,y:j.y,loot:j.loot,broken:false,solid:true,r:13}));
+CHESTS.forEach(c=>addE({type:'chest',x:c.x,y:c.y,loot:c.loot,open:false,solid:true,r:14}));
+SIGNS.forEach(s=>addE({type:'sign',x:s.x,y:s.y,title:s.title,text:s.text,read:false,solid:true,r:12}));
+KEYITEMS.forEach(k=>addE({type:'keyitem',x:k.x,y:k.y,taken:false,solid:false,phase:Math.random()*9}));
+GEMS.forEach(([x,y,a],i)=>addE({type:'gem',x,y,amt:a,taken:false,solid:false,phase:h2(x,y)*9}));
+NGEMS.forEach(([x,y,a])=>addE({type:'ngem',x,y,amt:a,taken:false,solid:false,phase:h2(x,y)*9}));
+SHRUBS.forEach(([x,y,g])=>addE({type:'shrub',x,y,hasGem:g,shaken:false,solid:true,r:12}));
+DIGS.forEach(([x,y,tr,g])=>addE({type:'dig',x,y,trea:tr,gems:g,dug:false,solid:false}));
+addE({type:'statue',x:9,y:19,solid:true,r:14});
+addE({type:'vendor',x:35,y:22,solid:true,r:13});
+addE({type:'heart',x:54,y:12,taken:false,solid:true,r:12});
+
+/* ================= الحالة ================= */
+const player={x:8.5*TILE,y:23.5*TILE,r:11,dx:0,dy:1,moving:false,walk:0,
+ gems:0,gemsTotal:0,keys:0,torch:false,shovel:false,lens:false,
+ rings:{sun:false,moon:false,star:false},treasures:[],stats:{jars:0,digs:0,puzzles:0,day:1}};
+let started=false,modalOpen=false,time=0,clock=0,nightF=0,wasNight=false,flash=0,shake=0;
+const DAY=90,NIGHT=60,CYCLE=DAY+NIGHT;
+const cam={x:0,y:0};
+let particles=[],floats=[],fireflies=[];
+for(let i=0;i<14;i++)fireflies.push({x:Math.random()*W*TILE,y:Math.random()*H*TILE,p:Math.random()*9,s:.3+Math.random()*.8});
+
+/* ================= اللوحة والرسم ================= */
+const cv=document.getElementById('game'),ctx=cv.getContext('2d');
+const lc=document.createElement('canvas'),lctx=lc.getContext('2d');
+let vw=0,vh=0,dpr=1;
+function resize(){dpr=Math.min(2,window.devicePixelRatio||1);vw=window.innerWidth;vh=window.innerHeight;cv.width=vw*dpr;cv.height=vh*dpr;lc.width=vw;lc.height=vh;ctx.setTransform(dpr,0,0,dpr,0,0);}
+window.addEventListener('resize',resize);resize();
+
+/* ================= الإدخال ================= */
+const keys={};
+window.addEventListener('keydown',e=>{
+ if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
+ keys[e.code]=true;
+ if(!e.repeat&&(e.code==='KeyE'||e.code==='Enter'||e.code==='Space')){if(modalOpen){if(e.code==='Escape')closeModal(true);}else if(started)doInteract();}
+ if(e.code==='Escape'&&modalOpen)closeModal(true);
+});
+window.addEventListener('keyup',e=>keys[e.code]=false);
+
+// عصا لمس
+const joyBase=document.getElementById('joyBase'),joyKnob=document.getElementById('joyKnob');
+let joyId=null,joyCX=0,joyCY=0,joyVec={x:0,y:0};
+cv.addEventListener('touchstart',e=>{for(const t of e.changedTouches){if(t.clientX<vw/2&&joyId===null){joyId=t.identifier;joyCX=t.clientX;joyCY=t.clientY;joyBase.style.display='block';joyBase.style.left=(joyCX-55)+'px';joyBase.style.top=(joyCY-55)+'px';joyKnob.style.left='32px';joyKnob.style.top='32px';}}e.preventDefault();},{passive:false});
+cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches){if(t.identifier===joyId){let dx=t.clientX-joyCX,dy=t.clientY-joyCY;const d=Math.hypot(dx,dy)||1;const m=Math.min(d,40);dx=dx/d*m;dy=dy/d*m;joyKnob.style.left=(32+dx)+'px';joyKnob.style.top=(32+dy)+'px';joyVec={x:dx/40,y:dy/40};}}e.preventDefault();},{passive:false});
+const joyEnd=e=>{for(const t of e.changedTouches){if(t.identifier===joyId){joyId=null;joyVec={x:0,y:0};joyBase.style.display='none';}}};
+cv.addEventListener('touchend',joyEnd);cv.addEventListener('touchcancel',joyEnd);
+
+/* ================= التصادم ================= */
+function tileSolid(gx,gy){if(gx<0||gy<0||gx>=W||gy>=H)return true;const t=grid[gy][gx];if(t===WALL||t===TREE||t===PILLAR||t===WATER)return true;const d=doorMap.get(gx+','+gy);if(d&&!d.open)return true;return false;}
+function solidAt(px,py){return tileSolid(Math.floor(px/TILE),Math.floor(py/TILE));}
+function hasLine(x1,y1,x2,y2){const d=Math.hypot(x2-x1,y2-y1);const n=Math.max(1,Math.ceil(d/10));for(let i=1;i<n;i++){const t=i/n;if(solidAt(x1+(x2-x1)*t,y1+(y2-y1)*t))return false;}return true;}
+function collideCircle(nx,ny,r){
+ const gx0=Math.floor((nx-r)/TILE),gx1=Math.floor((nx+r)/TILE),gy0=Math.floor((ny-r)/TILE),gy1=Math.floor((ny+r)/TILE);
+ for(let gy=gy0;gy<=gy1;gy++)for(let gx=gx0;gx<=gx1;gx++){if(!tileSolid(gx,gy))continue;
+  const cx=clamp(nx,gx*TILE,gx*TILE+TILE),cy=clamp(ny,gy*TILE,gy*TILE+TILE);
+  if((nx-cx)**2+(ny-cy)**2<r*r)return true;}
+ for(const e of ents){if(!e.solid||e.dead)continue;const d=(nx-e.px)**2+(ny-e.py)**2,rr=(r+e.r)**2;if(d<rr)return true;}
+ return false;
+}
+
+/* ================= HUD ================= */
+const IC={
+ gem:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2.5 19.5 9 12 21.5 4.5 9Z"/><path d="M4.5 9h15M12 2.5 8.5 9l3.5 12.5M12 2.5 15.5 9 12 21.5"/></svg>',
+ key:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="8" cy="8" r="4.2"/><path d="M11 11 20 20M17 17l2.4-2.4M14.5 14.5l2-2"/></svg>',
+ torch:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M11 12h2l1 9h-4Z"/><path d="M12 10c-2.6-1.4-2.2-4 .2-6.6C13.6 5 15.5 5.6 15 8c1.6-.4 1.8-1.6 1.5-2.6 2 2.2 1.8 5.4-1.4 6.4"/></svg>',
+ shovel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M13 3.5 20.5 11M16.8 7.2 9 15M9 15c-3 1.4-4.6 3.4-5.5 5.5C5.6 19.6 7.6 18 9 15Z"/><path d="M14.8 9.2 12 6.4"/></svg>',
+ lens:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 6 6M8 8.5a3.5 3.5 0 0 1 3-1.5"/></svg>',
+ bag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 9h12l1.5 11h-15Z"/><path d="M9 9V6.5a3 3 0 0 1 6 0V9"/></svg>',
+ snd:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 9v6h4l5 4V5L8 9Z"/><path d="M16.5 9a4.2 4.2 0 0 1 0 6M19 6.8a7.6 7.6 0 0 1 0 10.4"/></svg>',
+ mute:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 9v6h4l5 4V5L8 9Z"/><path d="m16.5 9.5 5 5m0-5-5 5"/></svg>',
+ help:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.3A2.6 2.6 0 1 1 12.5 12c-.7.4-1 .9-1 1.8"/><circle cx="12" cy="17" r=".4" fill="currentColor"/></svg>',
+ sun:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="4.4"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5 5l1.7 1.7M17.3 17.3 19 19M19 5l-1.7 1.7M6.7 17.3 5 19"/></svg>',
+ moon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4 7 7 0 0 0 20 14.5Z"/></svg>',
+};
+function setIc(id,html){document.getElementById(id).innerHTML=html;}
+setIc('stGems',IC.gem+'<span id="gemsN">٠</span>');
+setIc('stKeys',IC.key+'<span id="keysN">٠</span>');
+setIc('toolTorch',IC.torch);setIc('toolShovel',IC.shovel);setIc('toolLens',IC.lens);
+setIc('btnBag',IC.bag);setIc('btnHelp',IC.help);setIc('btnSound',IC.snd);
+setIc('actBtn','<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/></svg>');
+setIc('clockIcon',IC.sun);
+document.getElementById('btnSound').addEventListener('click',()=>{muted=!muted;setIc('btnSound',muted?IC.mute:IC.snd);});
+function updateHUD(){
+ document.getElementById('gemsN').textContent=arNum(player.gems);
+ document.getElementById('keysN').textContent=arNum(player.keys);
+ document.querySelectorAll('.ring-dot').forEach(el=>el.classList.toggle('on',!!player.rings[el.dataset.ring]));
+ document.getElementById('toolTorch').className='stat '+(player.torch?'lit':'dim');
+ document.getElementById('toolShovel').className='stat '+(player.shovel?'lit':'dim');
+ document.getElementById('toolLens').className='stat '+(player.lens?'lit':'dim');
+ document.getElementById('hudDay').textContent=arNum(player.stats.day);
+}
+updateHUD();
+
+/* ================= توست + نص طائر + جزيئات ================= */
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.getElementById('toasts').appendChild(t);setTimeout(()=>t.remove(),3400);}
+function addFloat(x,y,txt,color='#f2d67a'){floats.push({x,y,txt,life:1,color});}
+function burst(x,y,n,colors,spd=90,g=160){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=spd*(.3+Math.random());particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-40,life:.6+Math.random()*.5,max:1,color:colors[i%colors.length],size:2+Math.random()*3,g});}}
+function flame(x,y,n=1){for(let i=0;i<n;i++)particles.push({x:x+(Math.random()-.5)*6,y,vx:(Math.random()-.5)*8,vy:-28-Math.random()*22,life:.4+Math.random()*.35,max:.75,color:Math.random()<.5?'#f5a742':'#f6d268',size:1.5+Math.random()*2,g:-10});}
+
+/* ================= اللوحات (modal) ================= */
+const ov=document.getElementById('ov'),ovPanel=document.getElementById('ovPanel');
+let modalClosable=true;
+function openModal(html,closable=true){modalOpen=true;modalClosable=closable;ovPanel.innerHTML=html;ov.classList.remove('hidden');if(closable){const c=document.createElement('button');c.className='pclose';c.textContent='✕';c.onclick=()=>closeModal(true);ovPanel.appendChild(c);}}
+function closeModal(force){if(modalOpen&&(!modalClosable&&!force))return;modalOpen=false;ov.classList.add('hidden');ovPanel.innerHTML='';}
+ov.addEventListener('click',e=>{if(e.target===ov)closeModal(true);});
+
+function openSign(e){e.read=true;openModal(`<h2>${e.title}</h2><div class="quote">${e.text}</div><div class="btn-row"><button class="btn" onclick="closeModal(true)">أمضِ</button></div>`);}
+function openHelp(){openModal(`<h2>دليل الباحث</h2>
+ <p>• ابحث في <b>الجِرار</b> ونفض <b>الشجيرات</b> وافتح <b>الصناديق</b> — فيها مفاتيحٌ وأحجارٌ وكنوز.<br>
+ • الأحجارُ الكريمةُ عملةُ المدينة: اشترِ منها <b>المشعل</b> و<b>المجرفة</b> و<b>عدسة القمر</b> من نذير التاجر في السوق.<br>
+ • كلُّ بابٍ لغزُه، ولكلِّ لغزٍ دليلٌ منقوشٌ على لوحةٍ قريبة.<br>
+ • <b>الليلُ يكشف ما يخفيه النهار</b>: دموعَ القمر، وبوابةَ النجوم.<br>
+ • اجمعِ الخواتمَ الثلاثةَ وافتحِ البوابةَ الشرقيةَ حيثُ قلبُ المدينة.</p>
+ <div class="ctrl-hint" style="justify-content:flex-start;margin-top:14px"><span><span class="kbd">W A S D</span> أو الأسهم للحركة</span><span><span class="kbd">E</span> للتفاعل</span></div>
+ <div class="btn-row"><button class="btn" onclick="closeModal(true)">حسنًا</button></div>`);}
+
+/* ================= التاجر والحقيبة ================= */
+function openShop(){
+ const rows=SHOP.map(it=>{
+  const owned=player[it.id];
+  return `<div class="shop-row"><div class="shop-ic">${IC[it.id==='torch'?'torch':it.id==='shovel'?'shovel':'lens']}</div>
+  <div class="shop-info"><b>${it.name}</b><small>${it.desc}</small></div>
+  <div class="price">${IC.gem}${arNum(it.price)}</div>
+  ${owned?'<button class="btn" disabled>مُلكك</button>':`<button class="btn" data-buy="${it.id}">اشترِ</button>`}</div>`;}).join('');
+ openModal(`<h2>نذير التاجر</h2><p>«أهلًا بك أيها السائح… ما بقيَ من مدينتي إلا اسمٌ ورمال. أما معكَ من أحجارٍ فلها عندي ثمن.»</p><div class="divider"></div>${rows}
+ <div class="btn-row"><span class="stat" style="color:var(--teal)">${IC.gem}<span>${arNum(player.gems)}</span></span><button class="btn" onclick="closeModal(true)">انصرف</button></div>`);
+ ovPanel.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>{
+  const it=SHOP.find(s=>s.id===b.dataset.buy);
+  if(player.gems<it.price){sErr();toast('أحجارُك لا تكفي…');return;}
+  player.gems-=it.price;player[it.id]=true;sBuy();toast('اشتريتَ '+it.name);updateHUD();openShop();
+ }));
+}
+function openBag(){
+ const trs=player.treasures.map(t=>`<div class="t"><b>${TREASURES[t].name}</b><em>${TREASURES[t].desc}</em></div>`).join('')||'<div class="t" style="opacity:.5">لا كنوزَ بعد…</div>';
+ const tools=[player.torch&&'مشعل النار',player.shovel&&'مجرفة أثرية',player.lens&&'عدسة القمر'].filter(Boolean).join('، ')||'—';
+ openModal(`<h2>مقتنياتُ المستكشف</h2>
+ <div class="bag-sec"><h3>الحال</h3><div class="bag-list"><span class="bag-tag">أحجار كريمة: <b style="color:var(--teal)">${arNum(player.gems)}</b></span><span class="bag-tag">مفاتيح نحاسية: <b>${arNum(player.keys)}</b></span><span class="bag-tag">أدوات: ${tools}</span></div></div>
+ <div class="bag-sec"><h3>الخواتم</h3><div class="bag-list">${['sun','moon','star'].map(r=>`<span class="bag-tag" style="${player.rings[r]?'border-color:var(--gold)':'opacity:.4'}">${RING_NAMES[r]}${player.rings[r]?' ✓':''}</span>`).join('')}</div></div>
+ <div class="bag-sec"><h3>الكنوز</h3><div class="treasure-list">${trs}</div></div>
+ ${player.treasures.includes('scroll')?'<div class="quote" style="font-size:14px">«بُنيتِ المدينةُ في الواحدة، وهُدم سورُها في الثالثة، وازدهرت في الخامسة» — سرُّ الأقراص.</div>':''}
+ <div class="btn-row"><button class="btn" onclick="closeModal(true)">خِذ نفسًا</button></div>`);
+}
+document.getElementById('btnBag').addEventListener('click',openBag);
+document.getElementById('btnHelp').addEventListener('click',openHelp);
+
+/* ================= الأبواب والألغاز ================= */
+function openDoor(d){
+ d.open=true;sDoor();shake=6;
+ burst(d.px!==undefined?0:0,0,0,[]);burst((d.x+.5)*TILE,(d.y+.5)*TILE,22,['#8a7d6a','#6a5943','#c9a227'],70,120);
+ if(d.ring){player.rings[d.ring]=true;sBig();toast('حصلتَ على '+RING_NAMES[d.ring]+'!');}
+ if(d.kind!=='key'){player.stats.puzzles++;}
+ updateHUD();
+}
+const RUNE_SVG={
+ sun:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.8v2.2M12 19v2.2M2.8 12H5M19 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"/></svg>',
+ moon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4 7 7 0 0 0 20 14.5Z"/></svg>',
+ star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.6 6.2 6.7.5-5.1 4.4 1.6 6.6L12 16.7l-5.8 3.5 1.6-6.6-5.1-4.4 6.7-.5Z"/></svg>',
+ eye:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>',
+};
+function puzzleFrame(title,inner){return `<h2>${title}</h2>${inner}<div class="btn-row"><button class="btn" onclick="closeModal(true)">انصرف عن الباب</button></div>`;}
+
+function openRunesPuzzle(d){
+ const order=['star','eye','sun','moon'];let idx=0;
+ openModal(puzzleFrame('باب الأختام',`
+  <div class="quote">«بالشمسِ بدأت، وبالقمرِ سهرت، وبالنجمِ اكتملت، وبالعينِ رُعيت»</div>
+  <div class="rune-row">${order.map(r=>`<button class="rune-btn" data-r="${r}">${RUNE_SVG[r]}</button>`).join('')}</div>
+  <div class="slot-row" id="slots">${['sun','moon','star','eye'].map(r=>`<div class="slot" data-s="${r}"></div>`).join('')}</div>`));
+ function upd(){ovPanel.querySelectorAll('.slot').forEach((s,i)=>{s.innerHTML=i<idx?RUNE_SVG[s.dataset.s]:'';s.style.borderColor=i<idx?'var(--gold)':'';});}
+ ovPanel.querySelectorAll('.rune-btn').forEach(b=>b.addEventListener('click',()=>{
+  const seq=['sun','moon','star','eye'];
+  if(b.dataset.r===seq[idx]){idx++;tone(480+idx*130,.12,'triangle',.12);b.classList.add('hit');upd();
+   if(idx===4){sSolve();setTimeout(()=>{closeModal(true);openDoor(d);toast('صدحَ القفلُ القديم… وانفتح بابُ الأختام');},450);}}
+  else{sErr();idx=0;ovPanel.querySelectorAll('.rune-btn').forEach(x=>x.classList.remove('hit'));upd();ovPanel.classList.add('shake');setTimeout(()=>ovPanel.classList.remove('shake'),320);}
+ }));
+}
+function openDialsPuzzle(d){
+ const NUMS=['١','٢','٣','٤','٥','٦'];let cur=[0,0,0],locked=false;const target=[2,0,4];
+ const hasHint=player.treasures.includes('scroll');
+ let dialHtml='';
+ for(let i=0;i<3;i++){
+  let txt='';for(let k=0;k<6;k++){const a=-90+k*60,rad=Math.PI*a/180;txt+=`<text x="${55+38*Math.cos(rad)}" y="${55+38*Math.sin(rad)+5}" text-anchor="middle" font-size="16" font-weight="bold" fill="#efe6d0" font-family="Almarai">${NUMS[k]}</text>`;}
+  dialHtml+=`<div class="dial"><div class="disc-wrap"><div class="pointer"></div>
+  <svg class="disc" id="disc${i}" viewBox="0 0 110 110"><circle cx="55" cy="55" r="46" fill="#181209" stroke="#4a3c22" stroke-width="2"/>${txt}<circle cx="55" cy="55" r="6" fill="#4a3c22"/></svg></div>
+  <div class="dial-arrows"><button data-d="${i}" data-v="-1">◄</button><button data-d="${i}" data-v="1">►</button></div></div>`;
+ }
+ openModal(puzzleFrame('بوابة الأقراص',`
+  ${hasHint?'<div class="quote">من المخطوطة: «بُنيتِ المدينةُ في الواحدة، وهُدم سورُها في الثالثة، وازدهرت في الخامسة» — فدوِّر: ٣ ثم ١ ثم ٥</div>'
+  :'<p class="puzzle-desc">أقراصٌ صمّاء لا تكشف تأريخَها… لعلَّ مخطوطةً في حيِّ الأختام تدلُّ على الوضعِ الصحيح.</p>'}
+  <div class="dials-wrap">${dialHtml}</div>`));
+ function upd(){for(let i=0;i<3;i++)document.getElementById('disc'+i).style.transform=`rotate(${-cur[i]*60}deg)`;}
+ function check(){if(locked)return;if(cur[0]===target[0]&&cur[1]===target[1]&&cur[2]===target[2]){locked=true;sSolve();setTimeout(()=>{closeModal(true);openDoor(d);toast('رنَّت الأقراصُ نغمةً قديمة… وابتلعتها البوابة');},550);}}
+ ovPanel.querySelectorAll('.dial-arrows button').forEach(b=>b.addEventListener('click',()=>{
+  const i=+b.dataset.d;cur[i]=((cur[i]+ +b.dataset.v)%6+6)%6;tone(300+cur[i]*45,.07,'square',.06);upd();check();}));
+}
+function openStarsPuzzle(d){
+ let st=[1,1,1,1,1];
+ function press(arr,i){for(const k of [i-1,i,i+1])if(k>=0&&k<5)arr[k]^=1;}
+ for(let k=0;k<5;k++)press(st,Math.floor(Math.random()*5));
+ if(st.every(v=>!v))st=[0,1,0,1,0];
+ function starSvg(on){const pts=[];for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?10:22;pts.push((26+r*Math.cos(a)).toFixed(1)+','+(26+r*Math.sin(a)).toFixed(1));}
+  return `<svg viewBox="0 0 52 52"><polygon points="${pts.join(' ')}" fill="${on?'#f6d268':'#241d10'}" stroke="${on?'#c9a227':'#4a3c22'}" stroke-width="2"/></svg>`;}
+ function render(){ovPanel.querySelectorAll('.star-btn').forEach((b,i)=>b.innerHTML=starSvg(st[i]));}
+ openModal(puzzleFrame('بوابة النجوم',`
+  <p class="puzzle-desc">أصبحتَ في وجهِ الليل، والبوابةُ تصحو. أنِرِ النجومَ الخمس جميعًا — لمسةُ النجمةِ تقلبُها وتقلبُ جاراتَها.</p>
+  <div class="star-row">${[0,1,2,3,4].map(i=>`<button class="star-btn" data-i="${i}"></button>`).join('')}</div>`));
+ let done=false;
+ function check(){if(!done&&st.every(v=>v)){done=true;sSolve();setTimeout(()=>{closeModal(true);openDoor(d);toast('اشتعلَ القوسُ… وانفتحت بوابةُ النجوم');},500);}}
+ ovPanel.querySelectorAll('.star-btn').forEach(b=>b.addEventListener('click',()=>{if(done)return;press(st,+b.dataset.i);tone(520+st.filter(v=>v).length*70,.1,'triangle',.1);render();check();}));
+ render();
+}
+function openFinal(d){
+ const have=['sun','moon','star'].filter(r=>player.rings[r]).length;
+ if(have<3){sErr();toast(`البوابةُ صامتة… الخواتمُ الناقصة: ${arNum(3-have)}`);return;}
+ openModal(`<h2>بوابة المعبد</h2><p>الخواتمُ الثلاثةُ تحترق بلا لهب، والصخرةُ تنحني…</p>
+ <div class="rune-row">${['sun','moon','star'].map(r=>`<div class="rune-btn" style="cursor:default;border-color:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.6"><circle cx="12" cy="14" r="6"/><path d="M9.5 6.5 12 3l2.5 3.5" fill="var(--gold)"/></svg></div>`).join('')}</div>
+ <div class="btn-row"><button class="btn solid" id="finalGo">افتح البوابة</button><button class="btn" onclick="closeModal(true)">انتظر قليلًا</button></div>`);
+ document.getElementById('finalGo').addEventListener('click',()=>{closeModal(true);openDoor(d);toast('انفتحت بوابةُ المعبد… قلبُ المدينةِ ينتظر');});
+}
+
+/* ================= التفاعل ================= */
+function canInteract(e){
+ switch(e.type){case 'gem':return !e.taken;case 'ngem':return !e.taken&&nightF>.5;
+ case 'jar':return !e.broken;case 'chest':return !e.open;case 'keyitem':case 'heart':return !e.taken;
+ case 'shrub':return !e.shaken;case 'dig':return !e.dug;default:return true;}
+}
+function label(e){
+ switch(e.type){
+  case 'jar':return 'كسر الجرة';case 'chest':return 'فتح الصندوق';case 'sign':return 'قراءة اللوحة';
+  case 'gem':return 'التقاط الأحجار';case 'ngem':return 'التقاط دمع القمر';case 'keyitem':return 'أخذ المفتاح النحاسي';
+  case 'shrub':return 'نفض الشجيرة';case 'dig':return player.shovel?'حفر التراب':'فحص التراب';
+  case 'heart':return 'لمس قلب المدينة';case 'vendor':return 'التحدث مع نذير';case 'statue':return 'قراءة النقش';
+ }return '';
+}
+function interactTarget(){
+ let best=null,bd=1e9;
+ for(const e of ents){if(!canInteract(e))continue;const d=Math.hypot(e.px-player.x,e.py-player.y);
+  if(d<TILE*1.55&&d<bd&&hasLine(player.x,player.y,e.px,e.py)){bd=d;best=e;}}
+ for(const d of DOORS){if(d.open)continue;const cx=(d.x+.5)*TILE,cy=(d.y+.5)*TILE;const dd=Math.hypot(cx-player.x,cy-player.y);
+  if(dd<TILE*1.45&&dd<bd){bd=dd;best={type:'door',door:d,px:cx,py:cy};}}
+ return best;
+}
+function grantLoot(loot){
+ if(loot.gems){player.gems+=loot.gems;player.gemsTotal+=loot.gems;addFloat(player.x,player.y-24,'+'+arNum(loot.gems));sGem();}
+ if(loot.key){player.keys++;sKey();toast('مفتاحٌ نحاسيٌّ لامع! (لديك '+arNum(player.keys)+')');}
+ if(loot.treasure){player.treasures.push(loot.treasure);sBig();toast(TREASURES[loot.treasure].name+'! عثَرتَ عليه');}
+ updateHUD();
+}
+function doInteract(){
+ if(!started||modalOpen)return;
+ const e=interactTarget();if(!e)return;
+ switch(e.type){
+  case 'jar':e.broken=true;player.stats.jars++;sBreak();burst(e.px,e.py,14,['#b5763f','#8f5a2d','#d8a468'],110,220);grantLoot(e.loot);if(!Object.keys(e.loot).length)toast('فراغ! غبارُ الزمن فقط');break;
+  case 'chest':e.open=true;sBreak();burst(e.px,e.py-8,10,['#c9a227','#f6d268'],70,100);grantLoot(e.loot);if(e.loot.treasure==='scroll')toast('المخطوطة تكشف سرَّ بوابة الأقراص!');break;
+  case 'gem':e.taken=true;e.dead=true;sGem();burst(e.px,e.py,8,['#3ec6b4','#bff2ea'],60,80);player.gems+=e.amt;player.gemsTotal+=e.amt;addFloat(e.px,e.py-14,'+'+arNum(e.amt),'#7fe8da');updateHUD();break;
+  case 'ngem':e.taken=true;e.dead=true;sBig();burst(e.px,e.py,14,['#9fd0ff','#e5f2ff'],70,60);player.gems+=e.amt;player.gemsTotal+=e.amt;addFloat(e.px,e.py-14,'+'+arNum(e.amt),'#bfe0ff');toast('دمعُ القمر! جوهرةٌ لا تُرى إلا في الظلام');updateHUD();break;
+  case 'keyitem':e.taken=true;e.dead=true;sKey();burst(e.px,e.py,10,['#c9a227','#f6d268'],60,80);player.keys++;toast('مفتاحٌ نحاسي! (لديك '+arNum(player.keys)+')');updateHUD();break;
+  case 'shrub':e.shaken=true;noiseBurst(.12,.15,1600);burst(e.px,e.py-6,10,['#4a7a3a','#5c8f45'],70,180);
+   if(e.hasGem){player.gems+=3;player.gemsTotal+=3;sGem();addFloat(e.px,e.py-14,'+'+arNum(3),'#7fe8da');toast('أحجارٌ مخبأةٌ بين الأغصان!');}
+   else toast('لا شيء سوى الأوراقِ الجافة…');
+   updateHUD();break;
+  case 'dig':
+   if(!player.shovel){toast('التربةُ رخوة… شيءٌ مدفونٌ هنا. أحتاجُ مجرفة.');sErr();break;}
+   e.dug=true;player.stats.digs++;noiseBurst(.3,.25,500);burst(e.px,e.py,16,['#9c7a4e','#7c6238'],90,220);
+   if(e.trea){player.treasures.push(e.trea);sBig();toast('من حضنِ الرمال: '+TREASURES[e.trea].name+'!');}
+   if(e.gems){player.gems+=e.gems;player.gemsTotal+=e.gems;sGem();addFloat(e.px,e.py-14,'+'+arNum(e.gems),'#7fe8da');}
+   updateHUD();break;
+  case 'sign':openSign(e);break;
+  case 'statue':openModal(`<h2>نقش التمثال</h2><div class="quote">«للمدينةِ قلبٌ لا ينام، سجى تحتَ بوابةِ الشرق. من أحاطَ بالخواتمِ الثلاثةِ مسَّه.»</div><div class="btn-row"><button class="btn" onclick="closeModal(true)">أمضِ</button></div>`);break;
+  case 'vendor':openShop();break;
+  case 'heart':e.taken=true;grantLoot({treasure:'heart'});flash=1;sBig();sDoor();burst(e.px,e.py,30,['#e05548','#f6d268','#fff'],130,40);setTimeout(showEnding,1500);break;
+  case 'door':{
+   const d=e.door;
+   if(d.kind==='runes')openRunesPuzzle(d);
+   else if(d.kind==='dials')openDialsPuzzle(d);
+   else if(d.kind==='stars'){if(nightF<.5){toast('بوابةُ النجومِ نائمة… عُدْ في ساعاتِ الظلام');sErr();}else openStarsPuzzle(d);}
+   else if(d.kind==='key'){if(player.keys>0){player.keys--;openDoor(d);toast('دار المفتاحُ في القفل… وانفتح بابُ النحاس');updateHUD();}else{toast('مقفل. يحتاجُ مفتاحًا نحاسيًّا.');sErr();}}
+   else if(d.kind==='final')openFinal(d);
+   break;}
+ }
+}
+
+/* ================= النهاية ================= */
+function showEnding(){
+ closeModal(true);
+ const tCount=player.treasures.length;
+ const score=player.gemsTotal+tCount*18+Object.values(player.rings).filter(Boolean).length*10;
+ const rank=score>=360?'أسطورةُ المدينةِ المفقودة':score>=240?'مستكشفٌ ماهر':'باحثٌ شجاع';
+ const trs=player.treasures.map(t=>`<div class="t"><b>${TREASURES[t].name}</b><em>${TREASURES[t].desc}</em></div>`).join('');
+ openModal(`<div id="endingPanel">
+ <div class="kicker">اكتملت الحكاية</div><h1>عادَ القلبُ إلى المدينة</h1>
+ <p>وضعتَ ياقوتةَ قلبِ المدينةِ في راحةِ الأيامِ القديمة… فارتجّت الرمالُ، وذكَرت المدينةُ اسمَها.</p>
+ <div class="rank-badge">رتبتُك: ${rank}</div>
+ <div class="end-grid">
+  <div class="row"><span>الأحجارُ الكريمةُ (المجموعة)</span><b>${arNum(player.gemsTotal)}</b></div>
+  <div class="row"><span>الكنوزُ المكتشفة</span><b>${arNum(tCount)} / ٧</b></div>
+  <div class="row"><span>الخواتم</span><b>${arNum(Object.values(player.rings).filter(Boolean).length)} / ٣</b></div>
+  <div class="row"><span>الألغازُ المحلولة</span><b>${arNum(player.stats.puzzles)} / ٣</b></div>
+  <div class="row"><span>الجِرارُ المكسورة</span><b>${arNum(player.stats.jars)}</b></div>
+  <div class="row"><span>مواقعُ الحفر</span><b>${arNum(player.stats.digs)}</b></div>
+  <div class="row"><span>الأيامُ في المدينة</span><b>${arNum(player.stats.day)}</b></div>
+  <div class="row"><span>المفاتيحُ المتبقية</span><b>${arNum(player.keys)}</b></div>
+ </div>
+ <h3 style="text-align:right">خزانةُ الكنوز</h3><div class="treasure-list">${trs}</div>
+ <div class="btn-row" style="justify-content:center"><button class="btn solid" onclick="location.reload()">ابدأ رحلةً جديدة</button></div></div>`,false);
+}
+
+/* ================= التحديث ================= */
+function calcNight(){const t=clock%CYCLE;if(t<DAY-6)return 0;if(t<DAY)return (t-(DAY-6))/6;if(t<CYCLE-6)return 1;return 1-(t-(CYCLE-6))/6;}
+function inDarkZone(){const gx=Math.floor(player.x/TILE),gy=Math.floor(player.y/TILE);return gx>=DARK.x&&gx<DARK.x+DARK.w&&gy>=DARK.y&&gy<DARK.y+DARK.h;}
+
+function update(dt){
+ time+=dt;
+ if(started){
+  clock+=dt;
+  nightF=clamp(calcNight(),0,1);
+  if(nightF>.5&&!wasNight){wasNight=true;toast('أفلَّ الليل… عيونٌ أخرى تفتحُ الآن');if(windGain)windGain.gain.value=.04;}
+  if(nightF<.5&&wasNight){wasNight=false;player.stats.day++;toast('طلعَ الفجر — اليوم '+arNum(player.stats.day));updateHUD();if(windGain)windGain.gain.value=.012;}
+  // حركة اللاعب
+  let vx=0,vy=0;
+  if(!modalOpen){
+   if(keys.KeyW||keys.ArrowUp)vy-=1;if(keys.KeyS||keys.ArrowDown)vy+=1;
+   if(keys.KeyA||keys.ArrowLeft)vx-=1;if(keys.KeyD||keys.ArrowRight)vx+=1;
+   vx+=joyVec.x;vy+=joyVec.y;
+  }
+  const len=Math.hypot(vx,vy);
+  player.moving=len>0.15;
+  if(player.moving){
+   vx/=Math.max(1,len);vy/=Math.max(1,len);
+   const sp=170;const nx=player.x+vx*sp*dt,ny=player.y+vy*sp*dt;
+   if(!collideCircle(nx,player.y,player.r))player.x=nx;
+   if(!collideCircle(player.x,ny,player.r))player.y=ny;
+   player.dx=vx;player.dy=vy;player.walk+=dt;
+  }
+ }
+ // كاميرا
+ const tx=clamp(player.x-vw/2,0,W*TILE-vw),ty=clamp(player.y-vh/2,0,H*TILE-vh);
+ cam.x=lerp(cam.x,tx,1-Math.pow(.001,dt));cam.y=lerp(cam.y,ty,1-Math.pow(.001,dt));
+ shake=Math.max(0,shake-dt*18);flash=Math.max(0,flash-dt*.8);
+ // جزيئات
+ particles=particles.filter(p=>{p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=(p.g||0)*dt;return p.life>0;});
+ floats=floats.filter(f=>{f.life-=dt*.9;f.y-=26*dt;return f.life>0;});
+ // لهب المشاعل المرئية + يراعات
+ if(Math.random()<.7){
+  for(const [gx,gy] of WALL_TORCHES){const x=(gx+.5)*TILE,y=gy*TILE+4;if(x>cam.x-40&&x<cam.x+vw+40&&y>cam.y-40&&y<cam.y+vh+40)flame(x,y);}
+  for(const key of pillarTorches){const [gx,gy]=key.split(',').map(Number);const x=(gx+.5)*TILE,y=gy*TILE+2;if(x>cam.x-40&&x<cam.x+vw+40&&y>cam.y-40&&y<cam.y+vh+40)flame(x,y);}
+ }
+ for(const f of fireflies){f.x+=Math.sin(time*f.s+f.p)*14*dt;f.y+=Math.cos(time*f.s*.8+f.p)*11*dt;}
+ // prompt
+ if(started&&!modalOpen){const e=interactTarget();const pr=document.getElementById('prompt');
+  if(e){document.getElementById('promptText').textContent=e.type==='door'?('باب: '+e.door.name):label(e);pr.style.display='block';}
+  else pr.style.display='none';}
+ else document.getElementById('prompt').style.display='none';
+ // أيقونة الوقت
+ setIc('clockIcon',nightF>.5?IC.moon:IC.sun);
+ document.getElementById('clockLabel').textContent=nightF>.5?'ليل':'نهار';
+}
+
+/* ================= الرسم ================= */
+function rr(x,y,w,h,r,fill){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();if(fill!==false)ctx.fill();}
+function drawFloorTile(gx,gy){
+ const t=grid[gy][gx],x=gx*TILE,y=gy*TILE,r=h2(gx,gy);
+ if(t===FLOOR||t===DIRT||t===PILLAR){
+  if(t===DIRT){ctx.fillStyle='#96744a';ctx.fillRect(x,y,TILE,TILE);
+   ctx.fillStyle='rgba(90,66,38,.4)';for(let i=0;i<3;i++){const px=x+h2(gx*3+i,gy*7)*30+3,py=y+h2(gx*5,gy*3+i)*30+3;ctx.beginPath();ctx.ellipse(px,py,3+r*2,2+r,0,0,7);ctx.fill();}}
+  else{ctx.fillStyle=r<.5?'#857868':'#8b7e6d';ctx.fillRect(x,y,TILE,TILE);
+   ctx.strokeStyle='rgba(0,0,0,.09)';ctx.strokeRect(x+.5,y+.5,TILE,TILE);
+   if(r>.82){ctx.strokeStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.moveTo(x+5+r*6,y+6);ctx.lineTo(x+12+r*8,y+14+r*6);ctx.stroke();}
+   else if(r<.1){ctx.fillStyle='rgba(255,255,255,.06)';ctx.beginPath();ctx.arc(x+10+r*40,y+10,2,0,7);ctx.fill();}}
+ }else if(t===WATER){
+  ctx.fillStyle='#1f5e66';ctx.fillRect(x,y,TILE,TILE);
+  ctx.strokeStyle='rgba(190,230,225,.35)';ctx.lineWidth=1.5;
+  for(let i=0;i<2;i++){const ph=time*1.4+h2(gx,gy)*7+i*2.5;const wy=y+9+i*14+Math.sin(ph)*3;
+   ctx.beginPath();ctx.moveTo(x+5,wy);ctx.quadraticCurveTo(x+TILE/2,wy+Math.sin(ph*1.3)*3,x+TILE-5,wy);ctx.stroke();}
+  ctx.lineWidth=1;
+ }
+ // مواقع الحفر ترسم فوق التراب
+ for(const e of ents){if(e.type!=='dig'||e.x!==gx||e.y!==gy)continue;
+  if(!e.dug){ctx.fillStyle='rgba(70,50,28,.5)';ctx.beginPath();ctx.ellipse(x+18,y+18,11,8,0,0,7);ctx.fill();
+   ctx.fillStyle='#6d5230';for(let i=0;i<4;i++){const a=i*1.7+h2(gx,gy)*3;ctx.beginPath();ctx.arc(x+18+Math.cos(a)*11,y+18+Math.sin(a)*8,2.5,0,7);ctx.fill();}}
+  else{ctx.fillStyle='rgba(25,16,8,.72)';ctx.beginPath();ctx.ellipse(x+18,y+18,12,9,0,0,7);ctx.fill();}}
+}
+function drawWall(gx,gy){
+ const x=gx*TILE,y=gy*TILE,r=h2(gx*7,gy*3);
+ ctx.fillStyle='#6a5943';ctx.fillRect(x,y-LIFT,TILE,TILE); // وجه أساس
+ ctx.fillStyle=r<.5?'#9c8871':'#a08d76';ctx.fillRect(x,y-LIFT,TILE,TILE); // قمة
+ ctx.strokeStyle='rgba(60,45,30,.35)';
+ ctx.beginPath();ctx.moveTo(x,y-LIFT+TILE*.55);ctx.lineTo(x+TILE,y-LIFT+TILE*.55);ctx.stroke();
+ const off=r<.5?0:TILE/2;ctx.beginPath();ctx.moveTo(x+off,y-LIFT);ctx.lineTo(x+off,y-LIFT+TILE*.55);ctx.stroke();
+ if(gy+1>=H||!tileSolidBase(gx,gy+1)){ // واجهة مرئية أسفل
+  ctx.fillStyle='#66553f';ctx.fillRect(x,y+TILE-LIFT,TILE,LIFT);
+  ctx.strokeStyle='rgba(40,30,18,.5)';
+  ctx.beginPath();ctx.moveTo(x,y+TILE-LIFT+5);ctx.lineTo(x+TILE,y+TILE-LIFT+5);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x+off+8,y+TILE-LIFT+5);ctx.lineTo(x+off+8,y+TILE);ctx.stroke();
+ }
+}
+function tileSolidBase(gx,gy){if(gy>=H)return false;const t=grid[gy][gx];return t===WALL||t===PILLAR;}
+function drawTree(gx,gy){
+ const x=(gx+.5)*TILE,y=(gy+.5)*TILE,sw=Math.sin(time*1.2+gx)*1.5;
+ ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(x,y+12,13,5,0,0,7);ctx.fill();
+ ctx.strokeStyle='#7a5230';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x-2,y+12);ctx.quadraticCurveTo(x+1,y-6,x+4+sw,y-20);ctx.stroke();
+ ctx.lineWidth=3;
+ for(let i=0;i<6;i++){const a=-Math.PI*.95+i*Math.PI*.38;
+  ctx.strokeStyle=i%2?'#4a7a3a':'#5c8f45';
+  ctx.beginPath();ctx.moveTo(x+4+sw,y-20);ctx.quadraticCurveTo(x+4+sw+Math.cos(a)*14,y-20+Math.sin(a)*7-4,x+4+sw+Math.cos(a)*24,y-20+Math.sin(a)*13+3);ctx.stroke();}
+ ctx.lineWidth=1;
+ ctx.fillStyle='#8f5a2d';for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(x+2+sw+i*3,y-16+i*2,2,0,7);ctx.fill();}
+}
+function drawPillar(gx,gy){
+ const x=gx*TILE,y=gy*TILE;
+ ctx.fillStyle='#6a5943';ctx.fillRect(x+7,y+2,TILE-14,TILE-2);
+ ctx.fillStyle='#a08d76';ctx.fillRect(x+4,y-LIFT,TILE-8,TILE-6);
+ ctx.fillStyle='#8a7960';ctx.fillRect(x+4,y-LIFT,TILE-8,4);
+ if(pillarTorches.has(gx+','+gy)){
+  ctx.strokeStyle='#6b4a26';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x+18,y+2);ctx.lineTo(x+18,y-14);ctx.stroke();ctx.lineWidth=1;
+  const fl=Math.sin(time*11+gx)*2;
+  ctx.fillStyle='#f5a742';ctx.beginPath();ctx.ellipse(x+18,y-19+fl*.4,4.5,7+fl*.5,0,0,7);ctx.fill();
+  ctx.fillStyle='#f8dd8a';ctx.beginPath();ctx.ellipse(x+18,y-17,2.5,4,0,0,7);ctx.fill();
+ }
+}
+function drawTorchWall(gx,gy){
+ const x=(gx+.5)*TILE,y=gy*TILE+8,fl=Math.sin(time*10+gx*2)*1.5;
+ ctx.strokeStyle='#6b4a26';ctx.lineWidth=3.5;ctx.beginPath();ctx.moveTo(x,y+8);ctx.lineTo(x,y-8);ctx.stroke();ctx.lineWidth=1;
+ ctx.fillStyle='#f5a742';ctx.beginPath();ctx.ellipse(x,y-13+fl*.4,4.5,6.5+fl*.5,0,0,7);ctx.fill();
+ ctx.fillStyle='#f8dd8a';ctx.beginPath();ctx.ellipse(x,y-11,2.4,3.8,0,0,7);ctx.fill();
+}
+function drawDoor(d){
+ const x=d.x*TILE,y=d.y*TILE;
+ ctx.fillStyle='#544636';ctx.fillRect(x+1,y-12,4,TILE+12);ctx.fillRect(x+TILE-5,y-12,4,TILE+12);ctx.fillRect(x+1,y-12,TILE-2,7);
+ if(d.open){
+  ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x+5,y-5,TILE-10,TILE+5);
+  ctx.save();ctx.translate(x+TILE-6,y+TILE-2);ctx.rotate(-.5);ctx.fillStyle='#5e4226';ctx.fillRect(-TILE+12,-TILE,TILE-12,TILE);ctx.restore();
+ }else{
+  ctx.fillStyle='#7b5836';ctx.fillRect(x+5,y-6,TILE-10,TILE+4);
+  ctx.strokeStyle='#5e4226';for(let i=1;i<4;i++){ctx.beginPath();ctx.moveTo(x+5+i*(TILE-10)/4,y-6);ctx.lineTo(x+5+i*(TILE-10)/4,y+TILE-2);ctx.stroke();}
+  ctx.fillStyle='#c9a227';ctx.beginPath();ctx.arc(x+11,y+8,2.2,0,7);ctx.arc(x+TILE-11,y+8,2.2,0,7);ctx.fill();
+  // الشارة
+  const cx=x+TILE/2,cy=y+2;
+  ctx.fillStyle='#2a2013';ctx.beginPath();ctx.arc(cx,cy,8,0,7);ctx.fill();
+  ctx.strokeStyle='#c9a227';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,8,0,7);ctx.stroke();
+  if(d.id===1){ctx.beginPath();ctx.ellipse(cx,cy,5,3,0,0,7);ctx.stroke();ctx.fillStyle='#c9a227';ctx.beginPath();ctx.arc(cx,cy,1.6,0,7);ctx.fill();}
+  else if(d.id===2){ctx.fillStyle='#c9a227';for(let i=-1;i<2;i++){ctx.beginPath();ctx.arc(cx+i*4,cy,1.4,0,7);ctx.fill();}}
+  else if(d.id===3){ctx.strokeStyle='#c9a227';ctx.strokeRect(cx-3.5,cy-1,7,6);ctx.beginPath();ctx.arc(cx,cy-1,2.5,Math.PI,0);ctx.stroke();}
+  else if(d.id===4){const gl=nightF>.4?1:.4;ctx.fillStyle=`rgba(246,210,104,${gl})`;ctx.beginPath();
+   for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?2:5.5;ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));}ctx.closePath();ctx.fill();}
+  else{ctx.strokeStyle='#c9a227';ctx.beginPath();ctx.arc(cx,cy,4,0,7);ctx.stroke();for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*4.5,cy+Math.sin(a)*4.5);ctx.lineTo(cx+Math.cos(a)*7,cy+Math.sin(a)*7);ctx.stroke();}}
+  ctx.lineWidth=1;
+ }
+}
+function drawJar(e){
+ const x=e.px,y=e.py;
+ if(e.broken){ctx.fillStyle='#8f5a2d';ctx.beginPath();ctx.ellipse(x,y+8,9,3.5,0,0,7);ctx.fill();
+  ctx.fillStyle='#a96a38';ctx.beginPath();ctx.moveTo(x-8,y+6);ctx.lineTo(x-2,y+1);ctx.lineTo(x+2,y+7);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(x+2,y+7);ctx.lineTo(x+7,y+2);ctx.lineTo(x+9,y+8);ctx.closePath();ctx.fill();return;}
+ ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(x,y+10,10,4,0,0,7);ctx.fill();
+ ctx.fillStyle='#b5763f';ctx.beginPath();ctx.ellipse(x,y,9,11,0,0,7);ctx.fill();
+ ctx.fillStyle='#8f5a2d';ctx.fillRect(x-4,y-13,8,4);
+ ctx.fillStyle='rgba(255,235,200,.25)';ctx.beginPath();ctx.ellipse(x-3,y-2,2.5,6,-.3,0,7);ctx.fill();
+ ctx.strokeStyle='rgba(90,55,25,.5)';ctx.beginPath();ctx.ellipse(x,y+1,9,8,0,.4,2.6);ctx.stroke();
+}
+function drawChest(e){
+ const x=e.px,y=e.py;
+ ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(x,y+11,13,4.5,0,0,7);ctx.fill();
+ ctx.fillStyle='#6d4c28';ctx.fillRect(x-12,y-4,24,14);
+ ctx.fillStyle='#7c5a34';ctx.fillRect(x-12,y-10,24,7);
+ if(e.open){ctx.fillStyle='#241708';ctx.fillRect(x-9,y-3,18,9);
+  ctx.save();ctx.translate(x,y-10);ctx.rotate(-.6);ctx.fillStyle='#5e4226';ctx.fillRect(-12,-6,24,6);ctx.restore();
+  ctx.fillStyle='#f6d268';ctx.beginPath();ctx.arc(x-4,y-1,1.6,0,7);ctx.arc(x+3,y,1.4,0,7);ctx.fill();}
+ else{ctx.fillStyle='#c9a227';ctx.fillRect(x-2,y-10,4,18);ctx.fillRect(x-12,y-5,24,2);
+  ctx.fillStyle='#e8cd6d';ctx.fillRect(x-2.5,y-3,5,6);}
+}
+function drawGem(e,night){
+ const x=e.px,y=e.py+Math.sin(time*2.4+e.phase)*2;
+ const on=!night||nightF>.35;if(night&&!on)return;
+ if(night){ctx.fillStyle='rgba(159,208,255,.14)';ctx.beginPath();ctx.arc(x,y,12+Math.sin(time*3+e.phase)*3,0,7);ctx.fill();}
+ ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(e.px,e.py+9,6,2.5,0,0,7);ctx.fill();
+ const tw=.6+.4*Math.sin(time*4+e.phase);
+ ctx.fillStyle=night?'#9fd0ff':'#3ec6b4';
+ ctx.save();ctx.translate(x,y);ctx.scale(1,.72);ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(6,0);ctx.lineTo(0,8);ctx.lineTo(-6,0);ctx.closePath();ctx.fill();
+ ctx.fillStyle=`rgba(255,255,255,${.4*tw})`;ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(6,0);ctx.lineTo(0,0);ctx.closePath();ctx.fill();ctx.restore();
+ if(tw>.85){ctx.strokeStyle='rgba(255,255,255,.8)';ctx.beginPath();ctx.moveTo(x+5,y-10);ctx.lineTo(x+8,y-13);ctx.stroke();}
+}
+function drawKeyItem(e){
+ const x=e.px,y=e.py+Math.sin(time*2+e.phase)*3;
+ ctx.fillStyle='#6a5943';ctx.fillRect(x-8,y+6,16,6);ctx.fillStyle='#a08d76';ctx.fillRect(x-8,y+3,16,5);
+ ctx.save();ctx.translate(x,y-4);ctx.rotate(Math.sin(time*1.5)*.15);
+ ctx.strokeStyle='#e8cd6d';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-4,4.5,0,7);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,9);ctx.moveTo(0,5);ctx.lineTo(3.5,5);ctx.moveTo(0,9);ctx.lineTo(3.5,9);ctx.stroke();ctx.lineWidth=1;ctx.restore();
+ const tw=.5+.5*Math.sin(time*5+e.phase);
+ ctx.fillStyle=`rgba(255,243,200,${tw})`;ctx.beginPath();ctx.arc(x+8,y-10,1.5,0,7);ctx.fill();
+}
+function drawShrub(e){
+ const x=e.px,y=e.py;
+ ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(x,y+8,11,4,0,0,7);ctx.fill();
+ ctx.fillStyle='#3f6b34';ctx.beginPath();ctx.arc(x-6,y,7-(e.shaken?2:0),0,7);ctx.arc(x+6,y,7-(e.shaken?2:0),0,7);ctx.arc(x,y-5,8-(e.shaken?2.5:0),0,7);ctx.fill();
+ ctx.fillStyle='#4f8240';ctx.beginPath();ctx.arc(x-2,y-6,4.5,0,7);ctx.arc(x+5,y-1,3.5,0,7);ctx.fill();
+ if(e.hasGem&&!e.shaken){const tw=.5+.5*Math.sin(time*3+x);ctx.fillStyle=`rgba(62,198,180,${.3+.6*tw})`;ctx.beginPath();ctx.arc(x-8,y+2,2,0,7);ctx.fill();}
+}
+function drawStatue(e){
+ const x=e.px,y=e.py;
+ ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(x,y+12,13,5,0,0,7);ctx.fill();
+ ctx.fillStyle='#8a7960';ctx.fillRect(x-11,y+4,22,8);
+ ctx.fillStyle='#a5947a';ctx.beginPath();ctx.moveTo(x-8,y+4);ctx.lineTo(x-4,y-16);ctx.quadraticCurveTo(x,y-22,x+4,y-16);ctx.lineTo(x+8,y+4);ctx.closePath();ctx.fill();
+ ctx.fillStyle='#b3a288';ctx.beginPath();ctx.arc(x,y-20,5.5,0,7);ctx.fill();
+ ctx.strokeStyle='#7c6c54';ctx.beginPath();ctx.moveTo(x-5,y-8);ctx.lineTo(x+5,y-6);ctx.stroke();
+}
+function drawVendor(e){
+ const x=e.px,y=e.py,bob=Math.sin(time*1.6)*1;
+ ctx.fillStyle='#5c4433';ctx.fillRect(x-16,y+6,32,10);
+ ctx.strokeStyle='#c9a227';ctx.strokeRect(x-16,y+6,32,10);
+ ctx.fillStyle='#8f5a2d';ctx.beginPath();ctx.ellipse(x-8,y+4,4,5,0,0,7);ctx.fill();
+ ctx.strokeStyle='#6b4a26';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(x+7,y+5);ctx.lineTo(x+7,y-6);ctx.stroke();ctx.lineWidth=1;
+ ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(x,y+13+bob*.2,11,4,0,0,7);ctx.fill();
+ ctx.fillStyle='#3a4a63';rr(x-8,y-6+bob*.3,16,17,6);
+ ctx.fillStyle='#c9a227';ctx.fillRect(x-8,y+3+bob*.3,16,2.5);
+ ctx.fillStyle='#caa27b';ctx.beginPath();ctx.arc(x,y-10+bob*.4,6,0,7);ctx.fill();
+ ctx.fillStyle='#d8cdb4';ctx.beginPath();ctx.arc(x,y-12.5+bob*.4,6.2,Math.PI,0);ctx.fill();
+ const pu=1+.15*Math.sin(time*4);
+ ctx.fillStyle='rgba(246,210,104,.9)';ctx.save();ctx.translate(x,y-26+Math.sin(time*3)*2);ctx.scale(pu,pu);
+ ctx.beginPath();ctx.moveTo(0,-5);ctx.lineTo(4,0);ctx.lineTo(0,5);ctx.lineTo(-4,0);ctx.closePath();ctx.fill();ctx.restore();
+}
+function drawHeart(e){
+ const x=e.px,y=e.py,pu=1+.08*Math.sin(time*3);
+ ctx.fillStyle='#6a5943';ctx.fillRect(x-12,y+4,24,10);ctx.fillStyle='#8a7960';ctx.fillRect(x-14,y,28,6);
+ ctx.fillStyle='rgba(224,85,72,.12)';ctx.beginPath();ctx.arc(x,y-8,20+Math.sin(time*3)*4,0,7);ctx.fill();
+ ctx.save();ctx.translate(x,y-9);ctx.scale(pu,pu);
+ ctx.fillStyle='#c73b30';ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(8,0);ctx.lineTo(0,12);ctx.lineTo(-8,0);ctx.closePath();ctx.fill();
+ ctx.fillStyle='#e8837a';ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(8,0);ctx.lineTo(0,0);ctx.closePath();ctx.fill();ctx.restore();
+ if(Math.random()<.15)particles.push({x:x+(Math.random()-.5)*16,y:y-8,vx:0,vy:-20,life:.9,max:.9,color:'#e8837a',size:1.6,g:0});
+}
+function drawPlayer(){
+ const p=player,bob=p.moving?Math.sin(p.walk*11)*1.7:Math.sin(time*2)*.6;
+ const x=p.x,y=p.y;
+ ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(x,y+12,10,4,0,0,7);ctx.fill();
+ ctx.fillStyle='#57624d';rr(x-8,y-6+bob*.3,16,18,6);
+ ctx.fillStyle='#3c4436';ctx.fillRect(x-8,y+4+bob*.3,16,3);
+ ctx.fillStyle='#c9a227';ctx.fillRect(x-2,y+4+bob*.3,4,3);
+ const hx=x+p.dx*1.6,hy=y-11+bob*.45;
+ ctx.fillStyle='#caa27b';ctx.beginPath();ctx.arc(hx,hy,6,0,7);ctx.fill();
+ ctx.fillStyle='#8c2f2a';ctx.beginPath();ctx.arc(hx,hy-1.6,6.3,Math.PI,0);ctx.fill();
+ ctx.beginPath();ctx.arc(hx-p.dx*5,hy-2,2.4,0,7);ctx.fill();
+ if(p.torch){ctx.strokeStyle='#6b4a26';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x+9,y+2);ctx.lineTo(x+12,y-8);ctx.stroke();ctx.lineWidth=1;
+  const fl=Math.sin(time*12)*1.5;
+  ctx.fillStyle='#f5a742';ctx.beginPath();ctx.ellipse(x+12,y-13+fl*.4,4,6+fl*.5,0,0,7);ctx.fill();
+  ctx.fillStyle='#f8dd8a';ctx.beginPath();ctx.ellipse(x+12,y-11,2.2,3.4,0,0,7);ctx.fill();
+  if(Math.random()<.3)flame(x+12,y-13);}
+}
+function cut(x,y,r,a){const g=lctx.createRadialGradient(x-cam.x,y-cam.y,r*.15,x-cam.x,y-cam.y,r);g.addColorStop(0,`rgba(0,0,0,${a})`);g.addColorStop(1,'rgba(0,0,0,0)');lctx.fillStyle=g;lctx.beginPath();lctx.arc(x-cam.x,y-cam.y,r,0,7);lctx.fill();}
+
+function draw(){
+ ctx.fillStyle='#0d0b08';ctx.fillRect(0,0,vw,vh);
+ ctx.save();
+ const sx=shake?(Math.random()-.5)*shake:0,sy=shake?(Math.random()-.5)*shake:0;
+ ctx.translate(-cam.x+sx,-cam.y+sy);
+ const gx0=Math.max(0,Math.floor(cam.x/TILE)),gy0=Math.max(0,Math.floor(cam.y/TILE));
+ const gx1=Math.min(W-1,Math.ceil((cam.x+vw)/TILE)),gy1=Math.min(H-1,Math.ceil((cam.y+vh)/TILE));
+ for(let gy=gy0;gy<=gy1;gy++)for(let gx=gx0;gx<=gx1;gx++)drawFloorTile(gx,gy);
+ // قائمة مرتبة حسب العمق
+ const list=[];
+ for(let gy=gy0;gy<=gy1;gy++)for(let gx=gx0;gx<=gx1;gx++){
+  const t=grid[gy][gx];
+  if(t===WALL)list.push({z:(gy+1)*TILE,f:()=>drawWall(gx,gy)});
+  else if(t===TREE)list.push({z:(gy+1)*TILE-2,f:()=>drawTree(gx,gy)});
+  else if(t===PILLAR)list.push({z:(gy+1)*TILE,f:()=>drawPillar(gx,gy)});
+ }
+ for(const [gx,gy] of WALL_TORCHES)if(gx>=gx0&&gx<=gx1&&gy>=gy0&&gy<=gy1)list.push({z:(gy+1)*TILE+1,f:()=>drawTorchWall(gx,gy)});
+ for(const d of DOORS)if(d.x>=gx0-1&&d.x<=gx1+1&&d.y>=gy0-1&&d.y<=gy1+1)list.push({z:(d.y+1)*TILE-1,f:()=>drawDoor(d)});
+ for(const e of ents){if(e.dead||(e.type==='ngem'&&nightF<=.35))continue;if(e.px<cam.x-60||e.px>cam.x+vw+60||e.py<cam.y-80||e.py>cam.y+vh+60)continue;
+  list.push({z:e.py+6,f:()=>{
+   switch(e.type){case 'jar':drawJar(e);break;case 'chest':drawChest(e);break;
+   case 'gem':drawGem(e,false);break;case 'ngem':drawGem(e,true);break;
+   case 'keyitem':drawKeyItem(e);break;case 'shrub':drawShrub(e);break;
+   case 'sign':{ctx.fillStyle='#6a5943';ctx.fillRect(e.px-9,e.py-14,18,18);ctx.fillStyle='#a08d76';ctx.fillRect(e.px-11,e.py-17,22,6);
+    ctx.strokeStyle='#4a3c22';ctx.beginPath();ctx.moveTo(e.px-5,e.py-8);ctx.lineTo(e.px+5,e.py-8);ctx.moveTo(e.px-5,e.py-4);ctx.lineTo(e.px+4,e.py-4);ctx.stroke();break;}
+   case 'statue':drawStatue(e);break;case 'vendor':drawVendor(e);break;case 'heart':drawHeart(e);break;case 'dig':break;}
+  }});}
+ list.push({z:player.y+8,f:drawPlayer});
+ list.sort((a,b)=>a.z-b.z);for(const it of list)it.f();
+ // جزيئات
+ for(const p of particles){ctx.globalAlpha=clamp(p.life/p.max,0,1);ctx.fillStyle=p.color;ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);}
+ ctx.globalAlpha=1;
+ // نصوص طائرة
+ ctx.font='800 15px Almarai';ctx.textAlign='center';
+ for(const f of floats){ctx.globalAlpha=clamp(f.life,0,1);ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillText(f.txt,f.x+1,f.y+1);ctx.fillStyle=f.color;ctx.fillText(f.txt,f.x,f.y);}
+ ctx.globalAlpha=1;ctx.textAlign='left';
+ ctx.restore();
+
+ /* ====== طبقة الإضاءة ====== */
+ const dark=Math.max(nightF*.8,inDarkZone()? .92:0);
+ if(dark>.02){
+  lctx.clearRect(0,0,vw,vh);
+  lctx.globalCompositeOperation='source-over';
+  lctx.fillStyle=`rgba(9,12,34,${dark})`;lctx.fillRect(0,0,vw,vh);
+  lctx.globalCompositeOperation='destination-out';
+  const pDark=inDarkZone();
+  cut(player.x,player.y,pDark?(player.torch?175:55):130,.95);
+  for(const [gx,gy] of WALL_TORCHES){if(nightF>.2){const r=85+Math.sin(time*9+gx)*6;cut((gx+.5)*TILE,gy*TILE+4,r,.85);}}
+  for(const key of pillarTorches){const [gx,gy]=key.split(',').map(Number);const r=95+Math.sin(time*9+gx)*7;cut((gx+.5)*TILE,gy*TILE+2,r,.9);}
+  if(nightF>.35)for(const e of ents)if(e.type==='ngem'&&!e.taken)cut(e.px,e.py,34,.7);
+  if(nightF>.4){const d4=DOORS[3];cut((d4.x+.5)*TILE,(d4.y+.5)*TILE,60,.6);}
+  lctx.globalCompositeOperation='source-over';
+  ctx.drawImage(lc,0,0,vw,vh);
+  // غبار نجوم + يراعات
+  ctx.save();ctx.translate(-cam.x,-cam.y);
+  for(const f of fireflies){const a=nightF*(.25+.75*Math.abs(Math.sin(time*1.6+f.p)));if(a>.03){ctx.fillStyle=`rgba(255,236,150,${a})`;ctx.beginPath();ctx.arc(f.x,f.y,1.8,0,7);ctx.fill();}}
+  ctx.restore();
+ }
+ // وميض أبيض
+ if(flash>0){ctx.fillStyle=`rgba(255,248,230,${flash*.85})`;ctx.fillRect(0,0,vw,vh);}
+ // عدسة القمر: كشف المخبأ
+ if(player.lens&&started){
+  ctx.save();ctx.translate(-cam.x,-cam.y);
+  for(const e of ents){if(!canInteract(e))continue;const d=Math.hypot(e.px-player.x,e.py-player.y);if(d>TILE*10)continue;
+   const pu=.4+.6*Math.abs(Math.sin(time*2.5));
+   ctx.strokeStyle=`rgba(246,210,104,${pu*.9})`;ctx.lineWidth=1.5;
+   ctx.save();ctx.translate(e.px,e.py-18);ctx.rotate(Math.PI/4);ctx.strokeRect(-4,-4,8,8);ctx.restore();
+   ctx.beginPath();ctx.arc(e.px,e.py-18,9+pu*3,0,7);ctx.stroke();}
+  ctx.restore();ctx.lineWidth=1;
+ }
+}
+
+/* ================= الحلقة ================= */
+let last=performance.now();
+function loop(ts){
+ const dt=Math.min(.05,(ts-last)/1000);last=ts;
+ update(dt);draw();
+ requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ================= المقدمة ================= */
+const isTouch='ontouchstart' in window;
+if(isTouch)document.getElementById('actBtn').style.display='grid';
+document.getElementById('actBtn').addEventListener('pointerdown',e=>{e.preventDefault();doInteract();});
+ovPanel.innerHTML=`<div id="introPanel">
+ <div class="kicker">رحلةٌ في رمال النسيان</div>
+ <h1>المدينة المفقودة</h1>
+ <p class="story">منذ ألفِ عامٍ ابتلعت الرمالُ مدينةً كانت تزدهر، وبقيَ من قلبها ياقوتةٌ لا تنام. اعثر على المفاتيحِ والأدواتِ المخبأة، حلَّ ألغازِ الأبوابِ الأربعة، وجمعِ الأحجارَ الكريمةَ لتبحثَ بها عمّا تحتاج — فالليلُ هنا يكشفُ ما يخفيه النهار.</p>
+ <div class="ctrl-hint"><span><span class="kbd">W A S D</span> / الأسهم للحركة</span><span><span class="kbd">E</span> للتفاعل</span>${isTouch?'<span>عصا اللمس + زر التفاعل</span>':''}</div>
+ <div class="divider"></div>
+ <button class="btn solid" id="startBtn" style="font-size:17px;padding:11px 42px">ابدأ الاستكشاف</button>
+</div>`;
+ov.classList.remove('hidden');
+document.getElementById('startBtn').addEventListener('click',()=>{
+ ac();started=true;closeModal(true);
+ toast('ابحث عن اللوحاتِ المنقوشة… واقتربْ من كلِّ ما يلفتُ نظرك');
+ setTimeout(()=>toast('اجمع الأحجارَ الكريمة — ستحتاجها عند نذير التاجر'),3400);
+});
+</script>
+</body>
+</html>
