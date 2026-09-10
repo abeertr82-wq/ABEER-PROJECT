@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>المدينة المفقودة</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -163,16 +163,16 @@ canvas#game{display:block;width:100vw;height:100vh;touch-action:none;cursor:cros
   <div class="hud-left">
     <div class="clock-box"><span id="clockIcon"></span><span id="clockLabel">نهار</span><span style="opacity:.5">|</span><span>اليوم <span id="hudDay">١</span></span></div>
     <div class="hud-btns">
-      <button class="hbtn" id="btnBag" title="المقتنيات"></button>
-      <button class="hbtn" id="btnSound" title="الصوت"></button>
-      <button class="hbtn" id="btnHelp" title="المساعدة"></button>
+      <button class="hbtn" id="btnBag" type="button" title="المقتنيات" aria-label="فتح المقتنيات"></button>
+      <button class="hbtn" id="btnSound" type="button" title="الصوت" aria-label="تشغيل أو كتم الصوت"></button>
+      <button class="hbtn" id="btnHelp" type="button" title="المساعدة" aria-label="فتح المساعدة"></button>
     </div>
   </div>
 </div>
 
-<div id="prompt"><span id="promptText"></span><span class="kbd">E</span></div>
-<div id="toasts"></div>
-<div id="actBtn"></div>
+<div id="prompt" role="status" aria-live="polite"><span id="promptText"></span><span class="kbd">E</span></div>
+<div id="toasts" aria-live="polite" aria-atomic="true"></div>
+<div id="actBtn" role="button" tabindex="0" aria-label="تفاعل"></div>
 <div id="joyBase"><div id="joyKnob"></div></div>
 
 <div class="ov" id="ov"><div class="panel" id="ovPanel"></div></div>
@@ -318,8 +318,8 @@ const keys={};
 window.addEventListener('keydown',e=>{
  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
  keys[e.code]=true;
- if(!e.repeat&&(e.code==='KeyE'||e.code==='Enter'||e.code==='Space')){if(modalOpen){if(e.code==='Escape')closeModal(true);}else if(started)doInteract();}
- if(e.code==='Escape'&&modalOpen)closeModal(true);
+ if(e.code==='Escape'&&modalOpen){e.preventDefault();closeModal(true);return;}
+ if(!e.repeat&&['KeyE','Enter','Space'].includes(e.code)&&!modalOpen&&started)doInteract();
 });
 window.addEventListener('keyup',e=>keys[e.code]=false);
 
@@ -917,6 +917,7 @@ requestAnimationFrame(loop);
 const isTouch='ontouchstart' in window;
 if(isTouch)document.getElementById('actBtn').style.display='grid';
 document.getElementById('actBtn').addEventListener('pointerdown',e=>{e.preventDefault();doInteract();});
+document.getElementById('actBtn').addEventListener('keydown',e=>{if(e.code==='Enter'||e.code==='Space'){e.preventDefault();doInteract();}});
 ovPanel.innerHTML=`<div id="introPanel">
  <div class="kicker">رحلةٌ في رمال النسيان</div>
  <h1>المدينة المفقودة</h1>

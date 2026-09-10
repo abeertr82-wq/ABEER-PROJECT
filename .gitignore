@@ -1,0 +1,24 @@
+# نظام التشغيل
+.DS_Store
+Thumbs.db
+
+# المحررات وبيئات التطوير
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# السجلات والملفات المؤقتة
+*.log
+*.tmp
+.tmp/
+
+# تبعيات JavaScript إن أضيفت لاحقًا
+node_modules/
+dist/
+build/
+
+# تقارير وأدوات الاختبار المحلية
+coverage/
+playwright-report/
+test-results/
