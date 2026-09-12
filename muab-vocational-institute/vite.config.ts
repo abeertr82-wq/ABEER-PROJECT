@@ -206,7 +206,7 @@ function vitePluginStorageProxy(): Plugin {
 const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy()];
 
 export default defineConfig({
-  base: process.env.GITHUB_ACTIONS ? "/ABEER-PROJECT/muab-vocational-institute/" : "/",
+  base: process.env.GITHUB_ACTIONS ? "/ABEER-PROJECT/" : "/",
   plugins,
   resolve: {
     alias: {
