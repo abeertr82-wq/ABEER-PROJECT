@@ -20,9 +20,10 @@ import {
   X,
 } from "lucide-react";
 
-const heroImage = "/manus-storage/2AqbtaXjqTKr_b5f2c37b.png";
-const workshopImage = "/manus-storage/CKuK6fTlFTMK_5f1b181c.png";
-const classroomImage = "/manus-storage/1KTOO9WNKhvU_3e7aa43e.jpg";
+const asset = (name: string) => `${import.meta.env.BASE_URL}assets/${name}`;
+const heroImage = asset("classroom-workshop.png");
+const workshopImage = asset("hands-on-workshop.png");
+const classroomImage = asset("training-classroom.jpg");
 
 const programs = [
   {
